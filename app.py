@@ -10,7 +10,7 @@ import streamlit as st
 
 API_URL = "https://router.huggingface.co/v1/chat/completions"
 MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
-CHAT_HISTORY_HEIGHT = 260
+CHAT_HISTORY_HEIGHT = 360
 SIDEBAR_LIST_HEIGHT = 220
 CHATS_DIR = Path("chats")
 MEMORY_FILE = Path("memory.json")
@@ -390,13 +390,45 @@ def format_timestamp(timestamp: str) -> str:
     return datetime.fromisoformat(timestamp).strftime("%b %d, %I:%M %p")
 
 
-def truncate_title(text: str, limit: int = 32) -> str:
+def summarize_chat_title(text: str, limit: int = 40) -> str:
     normalized = " ".join(text.split()).strip()
     if not normalized:
         return "New Chat"
-    if len(normalized) <= limit:
-        return normalized
-    return f"{normalized[: limit - 3]}..."
+
+    sentences = re.split(r"[.?!]+", normalized)
+    candidates = [sentence.strip() for sentence in sentences if sentence.strip()]
+    summary = candidates[0] if candidates else normalized
+
+    if len(candidates) > 1:
+        for candidate in candidates:
+            if re.search(
+                r"\b(can you|could you|please|help me|i need|i want|create|make|plan)\b",
+                candidate,
+                re.IGNORECASE,
+            ):
+                summary = candidate
+                break
+
+    summary = re.sub(
+        r"^(hi|hello|hey)\b[,!\s]*",
+        "",
+        summary,
+        flags=re.IGNORECASE,
+    )
+    summary = re.sub(
+        r"^(can you|could you|would you|please|help me|i need|i want to)\b\s*",
+        "",
+        summary,
+        flags=re.IGNORECASE,
+    ).strip(" ,")
+
+    if not summary:
+        summary = normalized
+
+    summary = summary[:1].upper() + summary[1:]
+    if len(summary) <= limit:
+        return summary
+    return f"{summary[: limit - 3].rstrip()}..."
 
 
 def load_memory() -> dict:
@@ -592,17 +624,17 @@ def render_sidebar() -> None:
                         st.rerun()
 
         with st.expander("User Memory", expanded=True):
-            if st.session_state["memory"]:
-                for key, value in st.session_state["memory"].items():
-                    st.write(
-                        f"**{format_memory_label(key)}:** {render_memory_value(value)}"
-                    )
-
             if st.button("Clear Memory", use_container_width=True):
                 st.session_state["memory"] = {}
                 st.session_state["memory_notice"] = None
                 clear_memory()
                 st.rerun()
+
+            if st.session_state["memory"]:
+                for key, value in st.session_state["memory"].items():
+                    st.write(
+                        f"**{format_memory_label(key)}:** {render_memory_value(value)}"
+                    )
 
             if st.session_state["memory_notice"]:
                 st.caption(st.session_state["memory_notice"])
@@ -610,8 +642,19 @@ def render_sidebar() -> None:
 
 st.set_page_config(page_title="ECS32A Chatbot", layout="wide")
 
+st.markdown(
+    """
+    <style>
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("ECS32A Chatbot")
-st.caption("Streamlit + Hugging Face chat interface")
 
 token = load_hf_token()
 
@@ -638,10 +681,7 @@ active_chat = get_active_chat()
 prompt_disabled = not token
 
 if active_chat is None:
-    st.subheader("Chat")
     st.info("Start typing below to begin your first chat, or create one from the sidebar.")
-else:
-    st.subheader(active_chat["title"])
 
 if not token:
     st.error(
@@ -656,7 +696,7 @@ with chat_history:
                 st.write(message["content"])
 
 prompt = st.chat_input(
-    "Send a message to your AI assistant",
+    "Type a message and press ENTER",
     disabled=prompt_disabled,
 )
 
@@ -671,7 +711,7 @@ if prompt:
     sort_chats_by_recent()
 
     if active_chat["title"] == "New Chat":
-        active_chat["title"] = truncate_title(prompt)
+        active_chat["title"] = summarize_chat_title(prompt)
 
     save_chat(active_chat)
 

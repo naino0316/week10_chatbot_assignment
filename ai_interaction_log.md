@@ -98,3 +98,6 @@ Finally, I verified that the code was correct by putting example user prompts an
 I also asked Codex to fix the chatbot app layout with the following prompt:
 "Let's do a quick fix of the app layout. currently, the webpage automatically scrolls all the way down to the bottom of the chat area, meaning the user can't see the chat title. Can you make it so that the user can see the chat title AND the input text box? Can you also make it so that the user can see both the chat history sidebar AND the user memory sidebar? Finally, let's order the chat history chats from most recent to least recent, and the app should go to the most recent chat when first loaded."
 "Let's let the user be able to see the streamlit "ECS32A Chatbot" title, as well."
+
+Prompt to make some final changes to the app:
+"Great! Let's make some final changes to the app. First, let's put the "Clear Memory" button in the user memory at the top of the user memory section instead of at the bottom. Second, let's remove the "Streamlit + Hugging Face chat interface" caption and the chat title, so that the user just sees the "ECS32A Chatbot" title above the main chat area. Finally, let's change the chat title function a little bit to show chat titles in the sidebar that is a summary of the user's first message instead of just the first few words of the first message."
